@@ -103,3 +103,19 @@ INSERT OR IGNORE INTO ohlcv (symbol, date, open, high, low, close, volume) VALUE
 """, rows)
 
 conn.commit()
+
+
+
+### Load back to pd
+query = """
+SELECT date, open, high, low, close, volume
+FROM ohlcv
+WHERE symbol = 'AAPL'
+ORDER BY date
+"""
+
+df_sql = pd.read_sql(query, conn, parse_dates=['date'])
+df_sql.set_index('date', inplace=True)
+# simple count!
+cursor.execute("SELECT COUNT(*) FROM ohlcv WHERE symbol='AAPL'")
+print("Rows in DB:", cursor.fetchone()[0])
