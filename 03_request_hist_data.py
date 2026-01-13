@@ -15,8 +15,9 @@ ib.qualifyContracts(contract)
 bars = ib.reqHistoricalData(
     contract,
     endDateTime='',
-    durationStr='5 D',
-    barSizeSetting='1 day',
+    durationStr='1 Y',
+   #  barSizeSetting='1 day',
+    barSizeSetting='1 min',
     whatToShow='TRADES',
     useRTH=True
 )
