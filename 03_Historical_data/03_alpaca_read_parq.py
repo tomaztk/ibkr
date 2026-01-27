@@ -58,7 +58,7 @@ mpf.plot(
     type="candle",
     volume=True,
     style="yahoo",
-    title="SPY · 1m · NYSE",
+    title="SPY · 1m · QQQ",
     ylabel="Price",
     ylabel_lower="Volume",
     datetime_format="%H:%M",
