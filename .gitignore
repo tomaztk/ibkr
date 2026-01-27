@@ -1,1 +1,41 @@
+
+# ==========
+# env varaibles
+# =======
+
 .env
+
+
+# ==========
+# Data files
+# ==========
+
+*.parquet
+*.csv
+*.xlsx
+*.xls
+*.pkl
+*.pickle
+
+# SQLite  and shit files
+*.db
+*.sqlite
+*.sqlite3
+
+
+# =======
+# Directories
+# =========
+
+04_data/
+
+# ======
+# Python
+# ===
+
+__pycache__/
+*.py[cod]
+
+.venv/
+venv/
+env/
