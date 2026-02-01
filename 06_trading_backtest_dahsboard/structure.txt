@@ -1,0 +1,14 @@
+trading_dashboard/
+├── app.py                    # Main Streamlit dashboard
+├── config.py                 # Configuration (symbols, dates, defaults)
+├── requirements.txt          # All dependencies
+├── .env.example             # Template for your Alpaca API keys
+├── README.md                # Full documentation
+├── utils/
+│   └── data_fetcher.py      # Alpaca API data downloader
+├── strategies/
+│   └── strategies.py        # 5 trading strategies (SMA, RSI, Momentum, BB, MACD)
+├── backtest/
+│   └── engine.py            # Backtesting engine with commission/slippage
+└── scripts/
+    └── download_data.py     # Script to fetch historical data

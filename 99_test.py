@@ -28,8 +28,8 @@ previous = df.iloc[-2]
 buy_signal = ( previous['SMA20'] <= previous['SMA50'] and latest['SMA20'] > latest['SMA50'] )
 sell_signal = ( previous['SMA20'] >= previous['SMA50'] and latest['SMA20'] < latest['SMA50'] )
 
-print(buy_signal)
-print(sell_signal)
+#print(buy_signal)
+#print(sell_signal)
  
  
 
@@ -90,3 +90,24 @@ else:
     print("No trade action taken")
 '''
 ib.disconnect()
+
+
+'''
+9_test.py
+False
+False
+Account OK, items: 71
+
+Stock(conId=265598, symbol='AAPL', exchange='SMART', primaryExchange='NASDAQ', currency='USD',
+ localSymbol='AAPL', tradingClass='NMS')
+
+Current AAPL position: 0
+
+Trade(contract=Stock(conId=265598, symbol='AAPL', exchange='SMART', primaryExchange='NASDAQ', 
+currency='USD', localSymbol='AAPL', tradingClass='NMS'), order=MarketOrder(orderId=5, clientId=10, 
+action='BUY', totalQuantity=10), orderStatus=OrderStatus(orderId=5, status='PendingSubmit', filled=0.0, 
+remaining=0.0, avgFillPrice=0.0, permId=0, parentId=0, lastFillPrice=0.0, clientId=0, whyHeld='', 
+mktCapPrice=0.0), fills=[], log=[TradeLogEntry(time=datetime.datetime(2026, 1, 11, 6, 3, 17, 689015, 
+tzinfo=datetime.timezone.utc), status='PendingSubmit', message='', errorCode=0)], advancedError='')
+
+'''

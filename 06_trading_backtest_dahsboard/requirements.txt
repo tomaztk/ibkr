@@ -1,0 +1,19 @@
+# alpaca-trade-api==3.0.2
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=14.0.0
+
+streamlit>=1.29.0
+plotly>=5.18.0
+mplfinance>=0.12.10b0
+
+ta>=0.10.2
+pandas-ta>=0.3.14b
+
+vectorbt>=0.26.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+tqdm>=4.66.0
+python-dateutil>=2.8.2
+
+# add for backtest: backtester.py!

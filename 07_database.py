@@ -37,11 +37,23 @@ ib.connect('127.0.0.1', 7497, clientId=5)
 contract = Stock('AAPL', 'SMART', 'USD')
 ib.qualifyContracts(contract)
 
+'''
 bars = ib.reqHistoricalData(
     contract,
     endDateTime='',
     durationStr='3 M',
     barSizeSetting='1 day',
+    whatToShow='TRADES',
+    useRTH=True
+)
+'''
+
+
+bars = ib.reqHistoricalData(
+    contract,
+    endDateTime='',
+    durationStr='1 Y',
+    barSizeSetting='1 min',
     whatToShow='TRADES',
     useRTH=True
 )
