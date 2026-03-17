@@ -19,7 +19,7 @@ class PositionSide(Enum):
 
 @dataclass
 class Trade:
-    """Represents a single trade."""
+    """Represents a single trade."""r
     entry_time: pd.Timestamp
     entry_price: float
     side: PositionSide
