@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="/Users/tomazkastrun/Documents/tomaztk_github/ibkr/99_ver2/01_Data/alpaca_data.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3959"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,8:mainaccounts"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">
+CREATE TABLE IF NOT EXISTS symbols (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL UNIQUE,
+    name        TEXT,
+    exchange    TEXT,
+    asset_type  TEXT    CHECK(asset_type IN ('STOCK','ETF','CRYPTO','FOREX')) DEFAULT 'STOCK',
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS bars_daily (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol) ON DELETE CASCADE,
+    timestamp   TEXT    NOT NULL,
+    open        REAL    NOT NULL,
+    high        REAL    NOT NULL,
+    low         REAL    NOT NULL,
+    close       REAL    NOT NULL,
+    volume      REAL,
+    vwap        REAL,
+    trade_count INTEGER,
+    UNIQUE(symbol, timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS bars_hourly (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol) ON DELETE CASCADE,
+    timestamp   TEXT    NOT NULL,
+    open        REAL    NOT NULL,
+    high        REAL    NOT NULL,
+    low         REAL    NOT NULL,
+    close       REAL    NOT NULL,
+    volume      REAL,
+    vwap        REAL,
+    trade_count INTEGER,
+    UNIQUE(symbol, timestamp)
+);
+
+-- =============================================================================
+-- 2. TECHNICAL ANALYSIS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS indicators_daily (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol) ON DELETE CASCADE,
+    timestamp   TEXT    NOT NULL,
+    sma_20      REAL,
+    sma_50      REAL,
+    sma_200     REAL,
+    rsi_14      REAL,
+    macd        REAL,
+    macd_signal REAL,
+    macd_hist   REAL,
+    bb_upper    REAL,
+    bb_middle   REAL,
+    bb_lower    REAL,
+    bb_width    REAL,
+    bb_pct      REAL,
+    UNIQUE(symbol, timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS indicators_hourly (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol) ON DELETE CASCADE,
+    timestamp   TEXT    NOT NULL,
+    sma_20      REAL,
+    sma_50      REAL,
+    sma_200     REAL,
+    rsi_14      REAL,
+    macd        REAL,
+    macd_signal REAL,
+    macd_hist   REAL,
+    bb_upper    REAL,
+    bb_middle   REAL,
+    bb_lower    REAL,
+    bb_width    REAL,
+    bb_pct      REAL,
+    UNIQUE(symbol, timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS patterns_daily (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol) ON DELETE CASCADE,
+    timestamp   TEXT    NOT NULL,
+    pattern     TEXT    NOT NULL,
+    direction   TEXT    NOT NULL CHECK(direction IN ('bullish','bearish','neutral')),
+    confidence  TEXT    NOT NULL CHECK(confidence IN ('low','medium','high')),
+    UNIQUE(symbol, timestamp, pattern)
+);
+
+CREATE TABLE IF NOT EXISTS patterns_hourly (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol) ON DELETE CASCADE,
+    timestamp   TEXT    NOT NULL,
+    pattern     TEXT    NOT NULL,
+    direction   TEXT    NOT NULL CHECK(direction IN ('bullish','bearish','neutral')),
+    confidence  TEXT    NOT NULL CHECK(confidence IN ('low','medium','high')),
+    UNIQUE(symbol, timestamp, pattern)
+);
+
+-- =============================================================================
+-- 3. STRATEGY ENGINE
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS strategies (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    description TEXT,
+    resolution  TEXT    NOT NULL DEFAULT 'daily' CHECK(resolution IN ('daily','hourly')),
+    active      INTEGER NOT NULL DEFAULT 1,
+    params_json TEXT    NOT NULL DEFAULT '{}',   -- JSON: thresholds, windows, etc.
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    updated_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS trigger_rules (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id     INTEGER NOT NULL REFERENCES strategies(id) ON DELETE CASCADE,
+    name            TEXT    NOT NULL,
+    -- condition_type: RSI_OVERSOLD | RSI_OVERBOUGHT | MACD_CROSS | PATTERN_MATCH
+    --                 GOLDEN_CROSS | DEATH_CROSS | BB_SQUEEZE | COMPOSITE
+    condition_type  TEXT    NOT NULL,
+    params_json     TEXT    NOT NULL DEFAULT '{}',
+    action          TEXT    NOT NULL CHECK(action IN ('BUY','SELL','CLOSE','ALERT')),
+    cooldown_bars   INTEGER NOT NULL DEFAULT 0,   -- min bars between same trigger fires
+    active          INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS signals (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT    NOT NULL REFERENCES symbols(symbol),
+    strategy_id INTEGER NOT NULL REFERENCES strategies(id),
+    timestamp   TEXT    NOT NULL,
+    resolution  TEXT    NOT NULL,
+    signal_type TEXT    NOT NULL CHECK(signal_type IN ('BUY','SELL','HOLD')),
+    strength    REAL    NOT NULL DEFAULT 1.0 CHECK(strength BETWEEN 0 AND 1),
+    -- reason_json: {&quot;patterns&quot;:[&quot;Hammer&quot;],&quot;rsi&quot;:28.4,&quot;macd&quot;:&quot;bullish_cross&quot;,...}
+    reason_json TEXT    NOT NULL DEFAULT '{}',
+    acted_on    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    UNIQUE(symbol, strategy_id, timestamp, resolution)
+);
+
+-- =============================================================================
+-- 4. BACKTESTING
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS backtests (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT    NOT NULL,
+    strategy_id     INTEGER NOT NULL REFERENCES strategies(id),
+    symbol          TEXT    NOT NULL REFERENCES symbols(symbol),
+    resolution      TEXT    NOT NULL,
+    start_date      TEXT    NOT NULL,
+    end_date        TEXT    NOT NULL,
+    initial_capital REAL    NOT NULL DEFAULT 100000.0,
+    commission_pct  REAL    NOT NULL DEFAULT 0.001,
+    slippage_pct    REAL    NOT NULL DEFAULT 0.0005,
+    -- status: pending | running | done | failed
+    status          TEXT    NOT NULL DEFAULT 'pending',
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS backtest_trades (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    backtest_id     INTEGER NOT NULL REFERENCES backtests(id) ON DELETE CASCADE,
+    symbol          TEXT    NOT NULL,
+    entry_time      TEXT    NOT NULL,
+    exit_time       TEXT,
+    direction       TEXT    NOT NULL CHECK(direction IN ('LONG','SHORT')),
+    entry_price     REAL    NOT NULL,
+    exit_price      REAL,
+    quantity        REAL    NOT NULL,
+    gross_pnl       REAL,
+    commission      REAL    NOT NULL DEFAULT 0.0,
+    net_pnl         REAL,
+    net_pnl_pct     REAL,
+    -- exit_reason: signal | stop_loss | take_profit | end_of_data
+    exit_reason     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS backtest_metrics (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    backtest_id         INTEGER NOT NULL UNIQUE REFERENCES backtests(id) ON DELETE CASCADE,
+    total_return_pct    REAL,
+    annualized_return   REAL,
+    sharpe_ratio        REAL,
+    sortino_ratio       REAL,
+    max_drawdown_pct    REAL,
+    max_drawdown_dur    INTEGER,  -- bars in drawdown
+    win_rate            REAL,
+    total_trades        INTEGER,
+    winning_trades      INTEGER,
+    losing_trades       INTEGER,
+    profit_factor       REAL,
+    avg_trade_pnl       REAL,
+    avg_win_pnl         REAL,
+    avg_loss_pnl        REAL,
+    avg_holding_bars    REAL,
+    created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+-- =============================================================================
+-- 5. PORTFOLIO &amp; RISK
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS accounts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    broker          TEXT    NOT NULL DEFAULT 'IBKR',
+    account_id      TEXT    NOT NULL UNIQUE,
+    account_type    TEXT    NOT NULL DEFAULT 'MARGIN',
+    currency        TEXT    NOT NULL DEFAULT 'USD',
+    active          INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS risk_parameters (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id           INTEGER NOT NULL REFERENCES accounts(id),
+    -- NULL symbol = global default; specific symbol overrides global
+    symbol               TEXT    REFERENCES symbols(symbol),
+    max_position_pct     REAL    NOT NULL DEFAULT 0.05,   -- 5% of portfolio per position
+    stop_loss_pct        REAL    NOT NULL DEFAULT 0.02,   -- 2% loss → hard stop
+    take_profit_pct      REAL    NOT NULL DEFAULT 0.06,   -- 6% gain → take profit
+    max_daily_loss_pct   REAL    NOT NULL DEFAULT 0.01,   -- halt trading if day loss &gt; 1%
+    max_open_positions   INTEGER NOT NULL DEFAULT 10,
+    updated_at           TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    UNIQUE(account_id, symbol)
+);
+
+CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id       INTEGER NOT NULL REFERENCES accounts(id),
+    snapshot_date    TEXT    NOT NULL,
+    total_value      REAL    NOT NULL,
+    cash             REAL    NOT NULL,
+    invested         REAL    NOT NULL,
+    unrealized_pnl   REAL    NOT NULL DEFAULT 0.0,
+    realized_pnl_day REAL    NOT NULL DEFAULT 0.0,
+    created_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    UNIQUE(account_id, snapshot_date)
+);
+
+-- =============================================================================
+-- 6. ORDERS &amp; EXECUTION  (IBKR)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS orders (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id      INTEGER NOT NULL REFERENCES accounts(id),
+    symbol          TEXT    NOT NULL REFERENCES symbols(symbol),
+    signal_id       INTEGER REFERENCES signals(id),   -- nullable: manual orders
+    side            TEXT    NOT NULL CHECK(side IN ('BUY','SELL')),
+    -- order_type: MARKET | LIMIT | STOP | STOP_LIMIT | TRAILING_STOP
+    order_type      TEXT    NOT NULL DEFAULT 'MARKET',
+    quantity        REAL    NOT NULL CHECK(quantity &gt; 0),
+    limit_price     REAL,
+    stop_price      REAL,
+    -- status: pending | submitted | partially_filled | filled | cancelled | rejected
+    status          TEXT    NOT NULL DEFAULT 'pending',
+    ibkr_order_id   TEXT    UNIQUE,
+    submitted_at    TEXT,
+    filled_at       TEXT,
+    cancelled_at    TEXT,
+    reject_reason   TEXT,
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS executions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id        INTEGER NOT NULL REFERENCES orders(id),
+    ibkr_exec_id    TEXT    NOT NULL UNIQUE,
+    price           REAL    NOT NULL,
+    quantity        REAL    NOT NULL,
+    commission      REAL    NOT NULL DEFAULT 0.0,
+    exchange        TEXT,
+    executed_at     TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS positions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id      INTEGER NOT NULL REFERENCES accounts(id),
+    symbol          TEXT    NOT NULL REFERENCES symbols(symbol),
+    quantity        REAL    NOT NULL DEFAULT 0.0,  -- negative = short
+    avg_cost        REAL    NOT NULL DEFAULT 0.0,
+    current_price   REAL,
+    unrealized_pnl  REAL,
+    realized_pnl    REAL    NOT NULL DEFAULT 0.0,
+    opened_at       TEXT,
+    updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    UNIQUE(account_id, symbol)
+);
+
+CREATE TABLE IF NOT EXISTS trades_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id      INTEGER NOT NULL REFERENCES accounts(id),
+    symbol          TEXT    NOT NULL REFERENCES symbols(symbol),
+    entry_order_id  INTEGER REFERENCES orders(id),
+    exit_order_id   INTEGER REFERENCES orders(id),
+    direction       TEXT    NOT NULL CHECK(direction IN ('LONG','SHORT')),
+    entry_price     REAL    NOT NULL,
+    exit_price      REAL    NOT NULL,
+    quantity        REAL    NOT NULL,
+    gross_pnl       REAL    NOT NULL,
+    commission      REAL    NOT NULL DEFAULT 0.0,
+    net_pnl         REAL    NOT NULL,
+    net_pnl_pct     REAL    NOT NULL,
+    duration_sec    INTEGER,
+    closed_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+-- =============================================================================
+-- 7. AUDIT &amp; LOGGING
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS event_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- event_type: SIGNAL_GENERATED | ORDER_PLACED | ORDER_FILLED | POSITION_OPENED
+    --             POSITION_CLOSED | STOP_TRIGGERED | TAKE_PROFIT_TRIGGERED
+    --             RISK_BREACH | DATA_FETCH | ANALYSIS_RUN
+    event_type  TEXT    NOT NULL,
+    component   TEXT,
+    symbol      TEXT    REFERENCES symbols(symbol),
+    message     TEXT    NOT NULL,
+    data_json   TEXT    DEFAULT '{}',
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS error_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    component   TEXT    NOT NULL,
+    error_type  TEXT    NOT NULL,
+    message     TEXT    NOT NULL,
+    traceback   TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+-- =============================================================================
+-- INDEXES
+-- =============================================================================
+
+-- Market Data
+CREATE INDEX IF NOT EXISTS idx_bars_daily_sym_ts    ON bars_daily   (symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_bars_hourly_sym_ts   ON bars_hourly  (symbol, timestamp DESC);
+
+-- Technical Analysis
+CREATE INDEX IF NOT EXISTS idx_ind_daily_sym_ts     ON indicators_daily  (symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_ind_hourly_sym_ts    ON indicators_hourly (symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_pat_daily_sym_ts     ON patterns_daily    (symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_pat_hourly_sym_ts    ON patterns_hourly   (symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_pat_daily_pattern    ON patterns_daily    (pattern, direction);
+CREATE INDEX IF NOT EXISTS idx_pat_hourly_pattern   ON patterns_hourly   (pattern, direction);
+
+-- Strategy
+CREATE INDEX IF NOT EXISTS idx_signals_sym_ts       ON signals (symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_signals_acted        ON signals (acted_on, signal_type);
+
+-- Orders &amp; Execution
+CREATE INDEX IF NOT EXISTS idx_orders_account       ON orders (account_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_symbol_status ON orders (symbol, status);
+CREATE INDEX IF NOT EXISTS idx_executions_order     ON executions (order_id);
+CREATE INDEX IF NOT EXISTS idx_positions_account    ON positions (account_id, symbol);
+CREATE INDEX IF NOT EXISTS idx_trades_account       ON trades_history (account_id, closed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trades_symbol        ON trades_history (symbol, closed_at DESC);
+
+-- Backtesting
+CREATE INDEX IF NOT EXISTS idx_bt_trades_bt         ON backtest_trades (backtest_id);
+
+-- Audit
+CREATE INDEX IF NOT EXISTS idx_event_log_type       ON event_log (event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_event_log_symbol     ON event_log (symbol, created_at DESC);
+
+-- =============================================================================
+-- TRIGGERS  (SQLite substitute for stored procedures)
+-- =============================================================================
+
+-- Auto-update strategies.updated_at on any change
+CREATE TRIGGER IF NOT EXISTS trg_strategies_updated
+AFTER UPDATE ON strategies
+BEGIN
+    UPDATE strategies SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+    WHERE id = NEW.id;
+END;
+
+-- Auto-update positions.updated_at on any change
+CREATE TRIGGER IF NOT EXISTS trg_positions_updated
+AFTER UPDATE ON positions
+BEGIN
+    UPDATE positions SET updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+    WHERE id = NEW.id;
+END;
+
+-- Mark signal as acted_on when an order referencing it is submitted
+CREATE TRIGGER IF NOT EXISTS trg_signal_acted_on
+AFTER UPDATE OF status ON orders
+WHEN NEW.status = 'submitted' AND NEW.signal_id IS NOT NULL
+BEGIN
+    UPDATE signals SET acted_on = 1 WHERE id = NEW.signal_id;
+END;
+
+-- Log to event_log whenever an order changes status
+CREATE TRIGGER IF NOT EXISTS trg_log_order_status
+AFTER UPDATE OF status ON orders
+WHEN NEW.status != OLD.status
+BEGIN
+    INSERT INTO event_log (event_type, component, symbol, message, data_json)
+    VALUES (
+        CASE NEW.status
+            WHEN 'submitted' THEN 'ORDER_PLACED'
+            WHEN 'filled'    THEN 'ORDER_FILLED'
+            WHEN 'cancelled' THEN 'ORDER_CANCELLED'
+            WHEN 'rejected'  THEN 'ORDER_REJECTED'
+            ELSE 'ORDER_STATUS_CHANGE'
+        END,
+        'orders',
+        NEW.symbol,
+        'Order #' || NEW.id || ' → ' || NEW.status,
+        json_object('order_id', NEW.id,
+                    'side',     NEW.side,
+                    'qty',      NEW.quantity,
+                    'status',   NEW.status,
+                    'ibkr_id',  NEW.ibkr_order_id)
+    );
+END;
+
+-- Log newly opened positions
+CREATE TRIGGER IF NOT EXISTS trg_log_position_open
+AFTER INSERT ON positions
+BEGIN
+    INSERT INTO event_log (event_type, component, symbol, message, data_json)
+    VALUES ('POSITION_OPENED','positions', NEW.symbol,
+            'Position opened: ' || NEW.symbol || ' qty=' || NEW.quantity,
+            json_object('account_id', NEW.account_id,
+                        'quantity', NEW.quantity,
+                        'avg_cost', NEW.avg_cost));
+END;
+
+-- Log closed trades
+CREATE TRIGGER IF NOT EXISTS trg_log_trade_closed
+AFTER INSERT ON trades_history
+BEGIN
+    INSERT INTO event_log (event_type, component, symbol, message, data_json)
+    VALUES ('POSITION_CLOSED','trades_history', NEW.symbol,
+            'Trade closed: ' || NEW.symbol ||
+            ' net_pnl=' || ROUND(NEW.net_pnl,2) ||
+            ' (' || ROUND(NEW.net_pnl_pct*100,2) || '%)',
+            json_object('direction',   NEW.direction,
+                        'entry_price', NEW.entry_price,
+                        'exit_price',  NEW.exit_price,
+                        'net_pnl',     NEW.net_pnl,
+                        'net_pnl_pct', NEW.net_pnl_pct));
+END;
+
+-- =============================================================================
+-- VIEWS  (reusable analytical &quot;procedures&quot;)
+-- =============================================================================
+
+-- Latest indicators per symbol (daily)
+CREATE VIEW IF NOT EXISTS v_latest_indicators_daily AS
+SELECT i.*
+FROM   indicators_daily i
+INNER JOIN (
+    SELECT symbol, MAX(timestamp) AS ts FROM indicators_daily GROUP BY symbol
+) m ON i.symbol = m.symbol AND i.timestamp = m.ts;
+
+-- Latest indicators per symbol (hourly)
+CREATE VIEW IF NOT EXISTS v_latest_indicators_hourly AS
+SELECT i.*
+FROM   indicators_hourly i
+INNER JOIN (
+    SELECT symbol, MAX(timestamp) AS ts FROM indicators_hourly GROUP BY symbol
+) m ON i.symbol = m.symbol AND i.timestamp = m.ts;
+
+-- Open signals not yet acted on
+CREATE VIEW IF NOT EXISTS v_open_signals AS
+SELECT s.*, st.name AS strategy_name, st.resolution
+FROM   signals s
+JOIN   strategies st ON st.id = s.strategy_id
+WHERE  s.acted_on = 0
+ORDER BY s.created_at DESC;
+
+-- Live positions with current P&amp;L
+CREATE VIEW IF NOT EXISTS v_live_positions AS
+SELECT  p.*,
+        a.account_id AS ibkr_account,
+        ROUND(p.unrealized_pnl / (p.avg_cost * p.quantity) * 100, 4) AS unrealized_pnl_pct
+FROM    positions p
+JOIN    accounts  a ON a.id = p.account_id
+WHERE   p.quantity != 0
+ORDER BY ABS(p.unrealized_pnl) DESC;
+
+-- Open (pending / submitted) orders
+CREATE VIEW IF NOT EXISTS v_open_orders AS
+SELECT  o.*, a.account_id AS ibkr_account
+FROM    orders  o
+JOIN    accounts a ON a.id = o.account_id
+WHERE   o.status IN ('pending','submitted','partially_filled')
+ORDER BY o.created_at DESC;
+
+-- Trade performance summary per symbol
+CREATE VIEW IF NOT EXISTS v_trade_performance AS
+SELECT  symbol,
+        COUNT(*)                                        AS total_trades,
+        SUM(CASE WHEN net_pnl &gt; 0 THEN 1 ELSE 0 END)  AS winning_trades,
+        SUM(CASE WHEN net_pnl &lt; 0 THEN 1 ELSE 0 END)  AS losing_trades,
+        ROUND(AVG(net_pnl_pct) * 100, 4)               AS avg_return_pct,
+        ROUND(SUM(net_pnl), 2)                          AS total_net_pnl,
+        ROUND(
+            SUM(CASE WHEN net_pnl &gt; 0 THEN net_pnl ELSE 0 END) /
+            NULLIF(ABS(SUM(CASE WHEN net_pnl &lt; 0 THEN net_pnl ELSE 0 END)), 0)
+        , 4)                                            AS profit_factor
+FROM    trades_history
+GROUP BY symbol
+ORDER BY total_net_pnl DESC;
+
+-- Pattern hit rate vs subsequent price moves (daily)
+CREATE VIEW IF NOT EXISTS v_pattern_backtest_summary AS
+SELECT  p.pattern,
+        p.direction,
+        COUNT(*)                                            AS occurrences,
+        COUNT(bt.id)                                        AS with_trade,
+        ROUND(AVG(bt.net_pnl_pct)*100, 4)                  AS avg_bt_return_pct,
+        ROUND(
+            SUM(CASE WHEN bt.net_pnl &gt; 0 THEN 1 ELSE 0 END) * 1.0 /
+            NULLIF(COUNT(bt.id), 0) * 100
+        , 2)                                                AS backtest_win_rate_pct
+FROM    patterns_daily p
+LEFT JOIN backtest_trades bt
+       ON  bt.symbol     = p.symbol
+       AND bt.entry_time = p.timestamp
+GROUP BY p.pattern, p.direction
+ORDER BY occurrences DESC;
+
+-- Daily risk check: flag any symbol where open position size &gt; max_position_pct
+CREATE VIEW IF NOT EXISTS v_risk_breaches AS
+SELECT  p.account_id,
+        p.symbol,
+        ps.total_value,
+        ROUND(p.avg_cost * p.quantity, 2)                      AS position_value,
+        ROUND(p.avg_cost * p.quantity / ps.total_value * 100, 2) AS position_pct,
+        rp.max_position_pct * 100                              AS max_allowed_pct,
+        p.unrealized_pnl
+FROM    positions p
+JOIN    (SELECT account_id, MAX(snapshot_date) AS d FROM portfolio_snapshots GROUP BY account_id) last
+       ON  last.account_id = p.account_id
+JOIN    portfolio_snapshots ps
+       ON  ps.account_id = last.account_id AND ps.snapshot_date = last.d
+LEFT JOIN risk_parameters rp
+       ON  rp.account_id = p.account_id
+       AND (rp.symbol = p.symbol OR rp.symbol IS NULL)
+WHERE   p.quantity != 0
+  AND   (p.avg_cost * p.quantity / ps.total_value) &gt; COALESCE(rp.max_position_pct, 0.05)
+ORDER BY position_pct DESC;
+
+-- =============================================================================
+-- SEED DATA
+-- =============================================================================
+
+INSERT OR IGNORE INTO symbols (symbol, name, exchange, asset_type)
+VALUES
+    ('AAPL', 'Apple Inc.',             'NASDAQ', 'STOCK'),
+    ('MSFT', 'Microsoft Corporation',  'NASDAQ', 'STOCK');
+
+INSERT OR IGNORE INTO strategies (name, description, resolution, params_json)
+VALUES
+    ('RSI_Mean_Reversion',
+     'Buy oversold (RSI&lt;30), sell overbought (RSI&gt;70)',
+     'daily',
+     '{&quot;rsi_buy&quot;:30,&quot;rsi_sell&quot;:70,&quot;position_pct&quot;:0.05}'),
+
+    ('MACD_Momentum',
+     'Follow MACD crossovers with SMA trend filter',
+     'daily',
+     '{&quot;fast&quot;:12,&quot;slow&quot;:26,&quot;signal&quot;:9,&quot;sma_filter&quot;:50}'),
+
+    ('Pattern_Composite',
+     'Combine candlestick patterns with RSI/MACD confirmation',
+     'hourly',
+     '{&quot;min_confidence&quot;:&quot;medium&quot;,&quot;require_rsi_confirm&quot;:true}');
+
+INSERT OR IGNORE INTO accounts (broker, account_id, account_type, currency)
+VALUES ('IBKR', 'DU000000', 'MARGIN', 'USD');
+
+INSERT OR IGNORE INTO risk_parameters (account_id, symbol, max_position_pct,
+                                       stop_loss_pct, take_profit_pct)
+VALUES
+    (1, NULL,   0.05,  0.02,  0.06),  -- global default
+    (1, 'AAPL', 0.08,  0.025, 0.08),  -- AAPL can be slightly larger
+    (1, 'MSFT', 0.08,  0.025, 0.08);
+
+
+
+
+
+
+</sql><sql name="SQL 2">select * from bars_daily</sql><current_tab id="1"/></tab_sql></sqlb_project>
