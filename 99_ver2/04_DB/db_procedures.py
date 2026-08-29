@@ -20,7 +20,7 @@ import traceback
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 # ---------------------------------------------------------------------------
 # Connection wrapper
@@ -29,7 +29,7 @@ from typing import Any, Optional
 class DB:
     """Context-manager wrapper that enforces WAL + FK pragma on every connection."""
 
-    def __init__(self, path: str | Path = "trading.db"):
+    def __init__(self, path: Union[str, Path] = "trading.db"):
         self.path = str(path)
         self._conn: Optional[sqlite3.Connection] = None
 
@@ -645,7 +645,7 @@ class DB:
 # Convenience: initialise schema from schema.sql
 # =============================================================================
 
-def init_db(db_path: str | Path, schema_sql: str | Path = "schema.sql") -> None:
+def init_db(db_path: Union[str, Path], schema_sql: Union[str, Path] = "schema.sql") -> None:
     """Create all tables / indexes / triggers from schema.sql."""
     sql_text = Path(schema_sql).read_text()
     with sqlite3.connect(str(db_path)) as conn:

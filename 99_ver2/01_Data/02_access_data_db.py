@@ -17,6 +17,12 @@ Database schema (same for both tables):
     volume      REAL
     trade_count REAL
     vwap        REAL
+
+
+run:
+cd 01_Data
+python3 02_access_data_db.py
+
 """
 
 import os

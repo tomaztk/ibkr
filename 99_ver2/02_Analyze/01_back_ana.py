@@ -506,7 +506,7 @@ def main() -> None:
 
                 ind_table = f"indicators_{res}"
                 n = upsert_indicators(conn, df, ind_table)
-                print(f"    ✓ Indicators  → {ind_table}  ({n:,} rows upserted)")
+                print(f" Indicators  → {ind_table}  ({n:,} rows upserted)")
 
                 # Re-parse timestamp as string for pattern detectors
                 df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
@@ -515,7 +515,7 @@ def main() -> None:
                 pat_table = f"patterns_{res}"
                 records   = detect_all_patterns(df, symbol)
                 n = upsert_patterns(conn, records, pat_table)
-                print(f"    ✓ Patterns    → {pat_table}  ({len(records):,} detected, "
+                print(f" Patterns    → {pat_table}  ({len(records):,} detected, "
                       f"{n:,} new rows inserted)")
 
                 # Print pattern breakdown

@@ -23,6 +23,11 @@ Requirements:
     python3.9 -m pip install --upgrade pip
     pip3 install alpaca-py pandas pyarrow python-dotenv
     python3 01_access_Data.py   
+
+
+run:
+cd 01_Data
+python3 01_access_Data.py
 """
 
 import os

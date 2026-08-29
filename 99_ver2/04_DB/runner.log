@@ -1,0 +1,51 @@
+2026-05-31 17:34:13  ERROR     runner  Database not found: ../04_Data/99ver_db.db  (run with --init-db first)
+2026-05-31 17:34:34  ERROR     runner  Database not found: ../04_Data/99ver_db.db  (run with --init-db first)
+2026-05-31 17:35:16  ERROR     runner  Database not found: ../04_Data/99ver_db.db  (run with --init-db first)
+2026-05-31 17:35:50  INFO      runner  =================================================================
+2026-05-31 17:35:50  INFO      runner    Strategy Runner  [DRY-RUN]
+2026-05-31 17:35:50  INFO      runner  =================================================================
+2026-05-31 17:35:50  INFO      runner  IBKR  [DRY-RUN] — no real connection made
+2026-05-31 17:35:50  INFO      runner  Symbols: ['AAPL', 'MSFT']
+2026-05-31 17:35:50  INFO      runner  Strategies: ['RSI_Mean_Reversion', 'MACD_Momentum', 'Pattern_Composite']
+2026-05-31 17:35:50  INFO      runner  ─── Exit check ───────────────────────────────────────
+2026-05-31 17:35:50  INFO      runner  ─── Strategy evaluation ──────────────────────────────
+2026-05-31 17:35:50  INFO      runner  ─── Run summary ──────────────────────────────────────
+2026-05-31 17:35:50  INFO      runner    Evaluated : 6 combinations
+2026-05-31 17:35:50  INFO      runner    Acted on  : 0
+2026-05-31 17:35:50  INFO      runner    Held      : 6
+2026-05-31 17:37:22  INFO      runner  =================================================================
+2026-05-31 17:37:22  INFO      runner    Strategy Runner  [DRY-RUN]
+2026-05-31 17:37:22  INFO      runner  =================================================================
+2026-05-31 17:37:22  INFO      runner  IBKR  [DRY-RUN] — no real connection made
+2026-05-31 17:37:22  INFO      runner  Symbols: ['AAPL']
+2026-05-31 17:37:22  INFO      runner  Strategies: ['RSI_Mean_Reversion']
+2026-05-31 17:37:22  INFO      runner  ─── Exit check ───────────────────────────────────────
+2026-05-31 17:37:22  INFO      runner  ─── Strategy evaluation ──────────────────────────────
+2026-05-31 17:37:22  INFO      runner  ─── Run summary ──────────────────────────────────────
+2026-05-31 17:37:22  INFO      runner    Evaluated : 1 combinations
+2026-05-31 17:37:22  INFO      runner    Acted on  : 0
+2026-05-31 17:37:22  INFO      runner    Held      : 1
+2026-05-31 17:39:49  INFO      runner  =================================================================
+2026-05-31 17:39:49  INFO      runner    Strategy Runner  [DRY-RUN]
+2026-05-31 17:39:49  INFO      runner  =================================================================
+2026-05-31 17:39:49  INFO      runner  IBKR  [DRY-RUN] — no real connection made
+2026-05-31 17:39:49  INFO      runner  Symbols: ['AAPL']
+2026-05-31 17:39:49  INFO      runner  Strategies: ['MACD_Momentum']
+2026-05-31 17:39:49  INFO      runner  ─── Exit check ───────────────────────────────────────
+2026-05-31 17:39:49  INFO      runner  ─── Strategy evaluation ──────────────────────────────
+2026-05-31 17:39:49  INFO      runner  ─── Run summary ──────────────────────────────────────
+2026-05-31 17:39:49  INFO      runner    Evaluated : 1 combinations
+2026-05-31 17:39:49  INFO      runner    Acted on  : 0
+2026-05-31 17:39:49  INFO      runner    Held      : 1
+2026-05-31 20:59:07  INFO      runner  =================================================================
+2026-05-31 20:59:07  INFO      runner    Strategy Runner  [DRY-RUN]
+2026-05-31 20:59:07  INFO      runner  =================================================================
+2026-05-31 20:59:07  INFO      runner  IBKR  [DRY-RUN] — no real connection made
+2026-05-31 20:59:07  INFO      runner  Symbols: ['AAPL']
+2026-05-31 20:59:07  INFO      runner  Strategies: ['MACD_Momentum']
+2026-05-31 20:59:07  INFO      runner  ─── Exit check ───────────────────────────────────────
+2026-05-31 20:59:07  INFO      runner  ─── Strategy evaluation ──────────────────────────────
+2026-05-31 20:59:07  INFO      runner  ─── Run summary ──────────────────────────────────────
+2026-05-31 20:59:07  INFO      runner    Evaluated : 1 combinations
+2026-05-31 20:59:07  INFO      runner    Acted on  : 0
+2026-05-31 20:59:07  INFO      runner    Held      : 1
