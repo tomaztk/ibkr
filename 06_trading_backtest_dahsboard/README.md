@@ -203,7 +203,7 @@ class MyStrategy(BaseStrategy):
         return {'param1': 10}
     
     def generate_signals(self, df):
-        df = df.copy()
+        df = df.copy()e
         # Your strategy logic here
         df['signal'] = 0
         # Set df['signal'] = 1 for long, -1 for short
